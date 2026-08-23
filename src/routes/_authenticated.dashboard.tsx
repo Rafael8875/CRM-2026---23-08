@@ -29,8 +29,6 @@ import {
 } from 'recharts';
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { getDashboardStats, getWhatsAppReminderLink } from "@/lib/crm.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { ClientModal } from "@/components/crm/ClientModal";
 import { ContractModal } from "@/components/crm/ContractModal";
@@ -100,13 +98,95 @@ function DashboardComponent() {
     setActiveIndex(index);
   };
 
-  const fetchStats = useServerFn(getDashboardStats);
-  const getReminderLink = useServerFn(getWhatsAppReminderLink);
   const { data, isLoading, error } = useQuery({
     queryKey: ["dashboard-stats"],
-    queryFn: () => fetchStats(),
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Não autenticado");
+      const userId = session.user.id;
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+      const { count: activeContracts } = await supabase
+        .from("contracts").select("*", { count: 'exact', head: true })
+        .eq("user_id", userId).eq("status", "Fechado");
+
+      const { count: newClients } = await supabase
+        .from("clients").select("*", { count: 'exact', head: true })
+        .eq("user_id", userId).gte("created_at", startOfMonth);
+
+      const { data: monthlyIncome } = await supabase
+        .from("transactions").select("amount")
+        .eq("user_id", userId).eq("type", "income").eq("status", "Pago")
+        .gte("date", startOfMonth);
+
+      const totalMonthlyIncome = monthlyIncome?.reduce((acc: number, curr: any) => acc + Number(curr.amount), 0) || 0;
+
+      const { data: receivables } = await supabase
+        .from("transactions").select("amount")
+        .eq("user_id", userId).eq("type", "income").in("status", ["Pendente", "Vencido"]);
+
+      const totalReceivables = receivables?.reduce((acc: number, curr: any) => acc + Number(curr.amount), 0) || 0;
+
+      const { data: allTransactions } = await supabase
+        .from("transactions").select("amount, type, status")
+        .eq("user_id", userId).eq("status", "Pago");
+
+      const balance = allTransactions?.reduce((acc: number, curr: any) => {
+        const amt = Number(curr.amount);
+        return curr.type === 'income' ? acc + amt : acc - amt;
+      }, 0) || 0;
+
+      const { data: expenses } = await supabase
+        .from("transactions").select("amount")
+        .eq("user_id", userId).eq("type", "expense").eq("status", "Pago");
+
+      const totalExpenses = expenses?.reduce((acc: number, curr: any) => acc + Number(curr.amount), 0) || 0;
+
+      const chartData = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthLabel = d.toLocaleDateString('pt-BR', { month: 'short' });
+        const monthStart = new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
+        const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59).toISOString();
+
+        const { data: monthTrans } = await supabase
+          .from("transactions").select("amount, type")
+          .eq("user_id", userId).eq("status", "Pago")
+          .gte("date", monthStart).lte("date", monthEnd);
+
+        const income = monthTrans?.filter(t => t.type === 'income').reduce((acc, t) => acc + Number(t.amount), 0) || 0;
+        const expense = monthTrans?.filter(t => t.type === 'expense').reduce((acc, t) => acc + Number(t.amount), 0) || 0;
+        chartData.push({ name: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1), receita: income, despesa: expense });
+      }
+
+      const twentyFourHoursFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+      const { data: upcomingAlerts } = await supabase
+        .from("contracts").select("id, service_description, event_date_time, clients(name)")
+        .eq("user_id", userId).eq("status", "Fechado")
+        .gte("event_date_time", now.toISOString()).lte("event_date_time", twentyFourHoursFromNow)
+        .order("event_date_time", { ascending: true });
+
+      return {
+        stats: {
+          activeContracts: activeContracts || 0,
+          newClients: newClients || 0,
+          monthlyIncome: totalMonthlyIncome,
+          receivables: totalReceivables,
+          balance
+        },
+        totalExpenses,
+        chartData,
+        upcomingAlerts: (upcomingAlerts || []).map((c: any) => ({
+          id: c.id,
+          clientName: c.clients?.name,
+          service: c.service_description,
+          eventDate: c.event_date_time
+        }))
+      };
+    },
     retry: 2,
-    staleTime: 10000,
+    staleTime: 5000,
   });
 
   if (isLoading) {
@@ -169,11 +249,23 @@ function DashboardComponent() {
 
   const handleSendReminder = async (contractId: string) => {
     try {
-      const { whatsappUrl } = await getReminderLink({ data: { contractId } });
-      window.open(whatsappUrl, "_blank");
-    } catch (err) {
+      const { data: contract, error } = await supabase
+        .from("contracts").select("*, clients(name, whatsapp)")
+        .eq("id", contractId).single();
+      if (error || !contract) throw new Error("Contrato não encontrado");
+      const client = (contract as any).clients;
+      if (!client?.whatsapp) throw new Error("WhatsApp do cliente não cadastrado");
+      const cleanNumber = client.whatsapp.replace(/\D/g, "");
+      const eventTime = contract.event_date_time
+        ? new Date(contract.event_date_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        : "";
+      const message = encodeURIComponent(
+        `Olá ${client.name}! Lembrete do seu evento (${contract.service_description}) amanhã às ${eventTime}. Estamos ansiosos!`
+      );
+      window.open(`https://wa.me/${cleanNumber}?text=${message}`, "_blank");
+    } catch (err: any) {
       console.error("Erro ao gerar link do WhatsApp:", err);
-      alert("Não foi possível gerar o lembrete. Verifique se o WhatsApp do cliente está cadastrado.");
+      alert(err.message || "Não foi possível gerar o lembrete.");
     }
   };
 

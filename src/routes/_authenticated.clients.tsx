@@ -34,7 +34,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -427,7 +427,7 @@ function ClientModal({ open, onOpenChange, client }: { open: boolean; onOpenChan
     },
   });
 
-  useState(() => {
+  useEffect(() => {
     if (open) {
       if (client) {
         form.reset({
@@ -449,7 +449,7 @@ function ClientModal({ open, onOpenChange, client }: { open: boolean; onOpenChan
         });
       }
     }
-  });
+  }, [client, open, form]);
 
   const mutation = useMutation({
     mutationFn: async (values: ClientFormValues) => {
@@ -587,11 +587,13 @@ function ContractModal({ open, onOpenChange, clientId }: { open: boolean; onOpen
 
   const [selectedClientId, setSelectedClientId] = useState(clientId || "");
 
-  useState(() => {
+  useEffect(() => {
     if (open && clientId) {
       setSelectedClientId(clientId);
+    } else if (open && !clientId) {
+      setSelectedClientId("");
     }
-  });
+  }, [open, clientId]);
 
   const mutation = useMutation({
     mutationFn: async (values: ContractFormValues) => {
@@ -605,7 +607,7 @@ function ContractModal({ open, onOpenChange, clientId }: { open: boolean; onOpen
         total_value: values.total_value,
         down_payment: values.down_payment,
         balance_remaining: values.total_value - values.down_payment,
-        status: 'Orçamento',
+        status: 'Orcamento',
       });
       if (error) throw error;
     },
