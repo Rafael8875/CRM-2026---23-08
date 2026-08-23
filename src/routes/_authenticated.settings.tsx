@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { FileText, Trash2, Loader2, Plus, Users, ShieldCheck } from "lucide-react";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
-import { listTemplates } from "@/lib/pdf-generation.functions";
 import { listUsers } from "@/lib/users.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { UserModal } from "@/components/crm/UserModal";
@@ -24,12 +23,20 @@ function SettingsComponent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const queryClient = useQueryClient();
-  const getTemplates = useServerFn(listTemplates);
   const getUsers = useServerFn(listUsers);
 
   const { data: templates, isLoading: isLoadingTemplates } = useQuery({
     queryKey: ["contract-templates"],
-    queryFn: () => getTemplates(),
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Não autenticado");
+      const { data, error } = await supabase
+        .from("contract_templates")
+        .select("*")
+        .eq("user_id", session.user.id);
+      if (error) throw error;
+      return data || [];
+    },
   });
 
   const { data: users, isLoading: isLoadingUsers } = useQuery({

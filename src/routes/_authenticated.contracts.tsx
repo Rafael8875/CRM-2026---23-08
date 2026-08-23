@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useSuspenseQuery, useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Table, 
@@ -16,12 +16,9 @@ import {
   MoreHorizontal, 
   Edit, 
   Trash2, 
-  FilePlus,
-  FileText,
   Upload,
   Download,
   Loader2,
-  X,
   MessageCircle
 } from "lucide-react";
 
@@ -43,8 +40,8 @@ import {
 } from "@/components/ui/dialog";
 
 import { listContractFiles, getContractFileUrl, deleteContractFile, getWhatsAppShareLink } from "@/lib/contracts.functions";
-import { fillContractPdf, listTemplates } from "@/lib/pdf-generation.functions";
 import { useServerFn } from "@tanstack/react-start";
+import { CheckCircle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/contracts")({
   component: ContractsComponent,
@@ -92,6 +89,47 @@ function ContractsComponent() {
     onError: (error: any) => {
       console.error("Erro ao excluir contrato:", error);
       toast.error("Erro ao excluir contrato");
+    },
+  });
+
+  const closeContractMutation = useMutation({
+    mutationFn: async ({ id, total_value, service_description }: { id: string; total_value: number; service_description: string }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Não autenticado");
+
+      const { error } = await supabase
+        .from("contracts")
+        .update({ status: "Fechado" })
+        .eq("id", id);
+      if (error) throw error;
+
+      const { data: contract } = await supabase
+        .from("contracts")
+        .select("client_id")
+        .eq("id", id)
+        .single();
+
+      await supabase.from("transactions").insert({
+        user_id: user.id,
+        client_id: (contract as any)?.client_id,
+        contract_id: id,
+        type: "income",
+        amount: total_value,
+        status: "Pago",
+        description: `Receita do contrato: ${service_description || "Serviço"}`,
+        date: new Date().toISOString().split("T")[0],
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.refetchQueries({ queryKey: ["dashboard-stats"] });
+      toast.success("Contrato fechado e receita registrada!");
+    },
+    onError: (error: any) => {
+      console.error("Erro ao fechar contrato:", error);
+      toast.error("Erro ao fechar contrato");
     },
   });
 
@@ -198,6 +236,23 @@ function ContractsComponent() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-40 bg-task-dark border-white/10 text-white shadow-2xl backdrop-blur-xl">
+                          {contract.status !== "Fechado" && (
+                            <DropdownMenuItem 
+                              className="gap-2 cursor-pointer text-green-400 focus:text-green-300 focus:bg-green-500/10 transition-colors"
+                              onClick={() => {
+                                if (confirm("Fechar este contrato? Uma receita será gerada automaticamente.")) {
+                                  closeContractMutation.mutate({
+                                    id: contract.id,
+                                    total_value: contract.total_value || 0,
+                                    service_description: contract.service_description || "",
+                                  });
+                                }
+                              }}
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                              Fechar Contrato
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-white/5 focus:text-primary transition-colors">
                             <Edit className="h-4 w-4 text-task-blue" />
                             Editar
@@ -231,42 +286,17 @@ function ContractsComponent() {
 function ContractFilesManager({ contractId, contractNumber }: { contractId: string, contractNumber?: string | null }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const queryClient = useQueryClient();
   
   const listFiles = useServerFn(listContractFiles);
   const getUrl = useServerFn(getContractFileUrl);
   const deleteFileFn = useServerFn(deleteContractFile);
-  const generatePdf = useServerFn(fillContractPdf);
   const getWhatsAppLink = useServerFn(getWhatsAppShareLink);
-  const getTemplates = useServerFn(listTemplates);
 
   const { data: files } = useSuspenseQuery({
     queryKey: ["contract-files", contractId],
     queryFn: () => listFiles({ data: { contractId } }),
   });
-
-  const { data: templates } = useQuery({
-    queryKey: ["contract-templates"],
-    queryFn: () => getTemplates(),
-    enabled: isTemplateDialogOpen
-  });
-
-  const handleGenerateFromTemplate = async (templateId: string) => {
-    setIsGenerating(true);
-    try {
-      await generatePdf({ data: { contractId, templateId } });
-      queryClient.invalidateQueries({ queryKey: ["contract-files", contractId] });
-      toast.success("Contrato gerado com sucesso!");
-      setIsTemplateDialogOpen(false);
-    } catch (error) {
-      console.error(error);
-      toast.error("Erro ao gerar contrato preenchido");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -347,7 +377,7 @@ function ContractFilesManager({ contractId, contractNumber }: { contractId: stri
         <div className="space-y-6 mt-4">
           <div className="flex items-center justify-between border-b border-white/5 pb-4">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">Documentos</h3>
-            <div className="flex flex-col gap-2">
+            <div>
               <label className="cursor-pointer">
                 <input 
                   type="file" 
@@ -364,44 +394,6 @@ function ContractFilesManager({ contractId, contractNumber }: { contractId: stri
                   IMPORTAR PDF
                 </div>
               </label>
-              
-              <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
-                <Button 
-                  variant="link" 
-                  className="p-0 h-auto text-xs font-bold text-task-blue hover:text-task-blue/80 transition-colors justify-start"
-                  onClick={() => setIsTemplateDialogOpen(true)}
-                >
-                  <FilePlus className="h-3 w-3 mr-2" />
-                  GERAR A PARTIR DE MODELO
-                </Button>
-                
-                <DialogContent className="bg-task-dark border-white/10 text-white">
-                  <DialogHeader>
-                    <DialogTitle>Selecione um Modelo</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 mt-4">
-                    {!templates || templates.length === 0 ? (
-                      <div className="text-center py-4 text-muted-foreground italic text-sm">
-                        Nenhum modelo cadastrado. 
-                        <p className="mt-2 text-[10px] not-italic">Vá em configurações para gerenciar seus modelos de contrato.</p>
-                      </div>
-                    ) : (
-                      templates.map((template: any) => (
-                        <Button 
-                          key={template.id}
-                          variant="outline"
-                          className="w-full justify-start border-white/5 bg-white/[0.03] hover:bg-white/[0.08] text-white overflow-hidden group/item"
-                          onClick={() => handleGenerateFromTemplate(template.id)}
-                          disabled={isGenerating}
-                        >
-                          {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2 text-primary group-hover/item:scale-110 transition-transform" />}
-                          <span className="truncate">{template.title}</span>
-                        </Button>
-                      ))
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
             </div>
           </div>
 
