@@ -2,7 +2,6 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { 
   LayoutDashboard, 
   Users, 
-  FileText, 
   DollarSign, 
   Calendar, 
   BarChart3, 
@@ -48,8 +47,7 @@ function AuthenticatedLayout() {
 
   const menuItems = [
     { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
-    { label: "Clientes", icon: Users, to: "/clients" },
-    { label: "Criador de Contrato", icon: FileText, to: "/contracts" },
+    { label: "Clientes e Contratos", icon: Users, to: "/clients" },
     { label: "Financeiro", icon: DollarSign, to: "/financial" },
     { label: "Agenda", icon: Calendar, to: "/agenda" },
     { label: "Relatórios", icon: BarChart3, to: "/reports" },
