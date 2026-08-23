@@ -10,47 +10,90 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Trash2, Plus } from "lucide-react";
 
-const SERVICES = [
-  "Churros Gourmet",
-  "Mini Pizza",
-  "Mini Pastéis",
-  "Açaí",
-  "Drinks",
-  "Bancada de Drinks",
+const AVAILABLE_SERVICES = [
+  { id: "churros", name: "Churros", unit: "unidades", defaultItems: ["Estação de Churros", "Insumos e produtos necessários", "Estrutura e utensílios", "Equipe para operação", "Montagem e desmontagem", "Serviço no horário contratado"] },
+  { id: "mini_pizza", name: "Mini Pizza", unit: "unidades", defaultItems: ["Estação de Mini Pizzas", "Insumos e produtos necessários", "Estrutura e utensílios", "Equipe para operação", "Montagem e desmontagem", "Serviço no horário contratado"] },
+  { id: "mini_pastel", name: "Mini Pastéis", unit: "unidades", defaultItems: ["Estação de Mini Pastéis", "Insumos e produtos necessários", "Estrutura e utensílios", "Equipe para operação", "Montagem e desmontagem", "Serviço no horário contratado"] },
+  { id: "acai", name: "Açaí", unit: "unidades", defaultItems: ["Estação de Açaí", "Insumos e produtos necessários", "Estrutura e utensílios", "Equipe para operação", "Montagem e desmontagem", "Serviço no horário contratado"] },
+  { id: "drinks", name: "Drinks", unit: "unidades", defaultItems: ["Estação de Drinks", "Insumos e produtos necessários", "Estrutura e utensílios", "Equipe para operação", "Montagem e desmontagem", "Serviço no horário contratado"] },
+  { id: "bancada_drinks", name: "Bancada de Drinks", unit: "unidade", defaultItems: ["Bancada de Drinks", "Insumos e produtos necessários", "Estrutura e utensílios", "Equipe para operação", "Barraquinha", "Montagem e desmontagem", "Serviço no horário contratado"] },
 ];
+
+interface ServiceItem {
+  service_id: string;
+  service_name: string;
+  quantity: number;
+  unit_value: number;
+  total: number;
+  observation: string;
+  items: string[];
+}
+
+interface ContractFormData {
+  contratante_name: string;
+  contratante_document: string;
+  contratante_phone: string;
+  contratante_address: string;
+  fantasy_name: string;
+  guest_count: number;
+  event_date: string;
+  event_start_time: string;
+  event_end_time: string;
+  event_location: string;
+  event_address: string;
+  event_city: string;
+  event_state: string;
+  event_zip: string;
+  total_value: number;
+  entry_percent: number;
+  payment_method: string;
+  payment_deadline: string;
+  observations: string;
+}
+
+const defaultFormData: ContractFormData = {
+  contratante_name: "",
+  contratante_document: "",
+  contratante_phone: "",
+  contratante_address: "",
+  fantasy_name: "Adry Estações Gourmet",
+  guest_count: 0,
+  event_date: "",
+  event_start_time: "",
+  event_end_time: "",
+  event_location: "",
+  event_address: "",
+  event_city: "",
+  event_state: "",
+  event_zip: "",
+  total_value: 0,
+  entry_percent: 50,
+  payment_method: "",
+  payment_deadline: "",
+  observations: "",
+};
 
 interface ContractModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  clientId?: string;
+  editContract?: any;
 }
 
-export function ContractModal({ open, onOpenChange }: ContractModalProps) {
+export function ContractModal({ open, onOpenChange, clientId, editContract }: ContractModalProps) {
   const queryClient = useQueryClient();
-  const [selectedClientId, setSelectedClientId] = useState("");
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [formData, setFormData] = useState({
-    contratante_name: "",
-    contratante_document: "",
-    fantasy_name: "",
-    guest_count: 0,
-    event_date: "",
-    event_start_time: "",
-    event_end_time: "",
-    event_location: "",
-    event_address: "",
-    total_value: 0,
-    payment_method: "",
-    down_payment: 0,
-    observations: "",
-  });
+  const [selectedClientId, setSelectedClientId] = useState(clientId || "");
+  const [formData, setFormData] = useState<ContractFormData>(defaultFormData);
+  const [services, setServices] = useState<ServiceItem[]>([]);
 
   const { data: clients } = useQuery({
     queryKey: ["clients-lite"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, name, document")
+        .select("id, name, document, whatsapp, email, city, state")
         .order("name");
       if (error) throw error;
       return data;
@@ -59,83 +102,194 @@ export function ContractModal({ open, onOpenChange }: ContractModalProps) {
   });
 
   useEffect(() => {
-    if (selectedClientId && clients) {
+    if (editContract) {
+      setSelectedClientId(editContract.client_id || "");
+      setFormData({
+        contratante_name: editContract.contratante_name || editContract.clients?.name || "",
+        contratante_document: editContract.contratante_document || editContract.clients?.document || "",
+        contratante_phone: editContract.contratante_phone || editContract.clients?.whatsapp || "",
+        contratante_address: editContract.contratante_address || "",
+        fantasy_name: editContract.fantasy_name || "Adry Estações Gourmet",
+        guest_count: editContract.guest_count || 0,
+        event_date: editContract.event_date || "",
+        event_start_time: editContract.event_start_time || "",
+        event_end_time: editContract.event_end_time || "",
+        event_location: editContract.event_location || "",
+        event_address: editContract.event_address || "",
+        event_city: editContract.event_city || "",
+        event_state: editContract.event_state || "",
+        event_zip: editContract.event_zip || "",
+        total_value: editContract.total_value || 0,
+        entry_percent: editContract.entry_percent || 50,
+        payment_method: editContract.payment_method || "",
+        payment_deadline: editContract.payment_deadline || "",
+        observations: editContract.observations || "",
+      });
+      if (editContract.services && Array.isArray(editContract.services)) {
+        setServices(editContract.services);
+      }
+    } else {
+      setFormData(defaultFormData);
+      setServices([]);
+    }
+  }, [editContract, open]);
+
+  useEffect(() => {
+    if (selectedClientId && clients && !editContract) {
       const client = clients.find((c: any) => c.id === selectedClientId);
       if (client) {
         setFormData((prev) => ({
           ...prev,
           contratante_name: client.name || "",
           contratante_document: client.document || "",
+          contratante_phone: client.whatsapp || "",
         }));
       }
     }
-  }, [selectedClientId, clients]);
+  }, [selectedClientId, clients, editContract]);
 
-  const toggleService = (service: string) => {
-    setSelectedServices((prev) =>
-      prev.includes(service) ? prev.filter((s) => s !== service) : [...prev, service]
-    );
-  };
-
-  const updateField = (field: string, value: any) => {
+  const updateField = (field: keyof ContractFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
+
+  const addService = (serviceId: string) => {
+    const available = AVAILABLE_SERVICES.find((s) => s.id === serviceId);
+    if (!available || services.find((s) => s.service_id === serviceId)) return;
+
+    setServices((prev) => [
+      ...prev,
+      {
+        service_id: available.id,
+        service_name: available.name,
+        quantity: 0,
+        unit_value: 0,
+        total: 0,
+        observation: "",
+        items: [...available.defaultItems],
+      },
+    ]);
+  };
+
+  const updateService = (index: number, field: keyof ServiceItem, value: any) => {
+    setServices((prev) => {
+      const updated = [...prev];
+      (updated[index] as any)[field] = value;
+      if (field === "quantity" || field === "unit_value") {
+        updated[index].total = updated[index].quantity * updated[index].unit_value;
+      }
+      return updated;
+    });
+  };
+
+  const removeService = (index: number) => {
+    setServices((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateServiceItem = (serviceIndex: number, itemIndex: number, value: string) => {
+    setServices((prev) => {
+      const updated = [...prev];
+      updated[serviceIndex].items[itemIndex] = value;
+      return updated;
+    });
+  };
+
+  const addServiceItem = (serviceIndex: number) => {
+    setServices((prev) => {
+      const updated = [...prev];
+      updated[serviceIndex].items.push("");
+      return updated;
+    });
+  };
+
+  const removeServiceItem = (serviceIndex: number, itemIndex: number) => {
+    setServices((prev) => {
+      const updated = [...prev];
+      updated[serviceIndex].items.splice(itemIndex, 1);
+      return updated;
+    });
+  };
+
+  const entryValue = (formData.total_value * formData.entry_percent) / 100;
+  const balanceValue = formData.total_value - entryValue;
+
+  const formatCurrency = (v: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
   const handleSave = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Não autenticado");
       if (!selectedClientId) throw new Error("Selecione um cliente");
+      if (services.length === 0) throw new Error("Selecione pelo menos um serviço");
 
-      const { error } = await supabase.from("contracts").insert({
+      const payload = {
         client_id: selectedClientId,
         user_id: session.user.id,
-        service_description: selectedServices.join(", ") || "Serviço",
+        service_description: services.map((s) => s.service_name).join(", "),
         total_value: formData.total_value,
-        down_payment: formData.down_payment,
-        balance_remaining: formData.total_value - formData.down_payment,
-        status: 'Orcamento',
-        contratante_name: formData.contratante_name || null,
-        contratante_document: formData.contratante_document || null,
-        fantasy_name: formData.fantasy_name || null,
+        down_payment: entryValue,
+        balance_remaining: balanceValue,
+        status: editContract?.status || "Rascunho",
+        contratante_name: formData.contratante_name,
+        contratante_document: formData.contratante_document,
+        contratante_phone: formData.contratante_phone,
+        contratante_address: formData.contratante_address,
+        fantasy_name: formData.fantasy_name,
         guest_count: formData.guest_count || null,
         event_date: formData.event_date || null,
         event_start_time: formData.event_start_time || null,
         event_end_time: formData.event_end_time || null,
-        event_location: formData.event_location || null,
-        event_address: formData.event_address || null,
-        payment_method: formData.payment_method || null,
-        observations: formData.observations || null,
-        services: selectedServices,
-      });
-      if (error) throw error;
+        event_location: formData.event_location,
+        event_address: formData.event_address,
+        event_city: formData.event_city,
+        event_state: formData.event_state,
+        event_zip: formData.event_zip,
+        payment_method: formData.payment_method,
+        payment_deadline: formData.payment_deadline || null,
+        entry_percent: formData.entry_percent,
+        observations: formData.observations,
+        services: services,
+      };
+
+      if (editContract) {
+        const { error } = await supabase
+          .from("contracts")
+          .update(payload)
+          .eq("id", editContract.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("contracts").insert(payload);
+        if (error) throw error;
+      }
 
       queryClient.invalidateQueries({ queryKey: ["contracts"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      toast.success("Contrato criado!");
+      toast.success(editContract ? "Contrato atualizado!" : "Contrato criado!");
       onOpenChange(false);
       setSelectedClientId("");
-      setSelectedServices([]);
-      setFormData({
-        contratante_name: "", contratante_document: "", fantasy_name: "",
-        guest_count: 0, event_date: "", event_start_time: "", event_end_time: "",
-        event_location: "", event_address: "", total_value: 0, payment_method: "",
-        down_payment: 0, observations: "",
-      });
+      setFormData(defaultFormData);
+      setServices([]);
     } catch (error: any) {
       console.error(error);
-      toast.error(error.message || "Erro ao criar contrato");
+      toast.error(error.message || "Erro ao salvar contrato");
     }
   };
 
+  const unselectedServices = AVAILABLE_SERVICES.filter(
+    (s) => !services.find((sv) => sv.service_id === s.id)
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] bg-task-dark border-white/10 text-white max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] bg-task-dark border-white/10 text-white max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Novo Contrato</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">
+            {editContract ? "Editar Contrato" : "Novo Contrato"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5 pt-4">
+          {/* Cliente */}
           <div className="space-y-2">
             <label className="text-white/80 font-bold uppercase text-[10px] tracking-widest">Cliente</label>
             <select
@@ -150,103 +304,161 @@ export function ContractModal({ open, onOpenChange }: ContractModalProps) {
             </select>
           </div>
 
-          <div className="border-t border-white/10 pt-4">
-            <h3 className="text-sm font-bold text-primary mb-3">Dados do Contrato</h3>
+          {/* Dados do Contratante */}
+          <Section title="Dados do Contratante">
+            <Field label="Nome Completo" value={formData.contratante_name} onChange={(v) => updateField("contratante_name", v)} />
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-white/60 text-[10px] font-bold uppercase">Contratante</label>
-                <input className="w-full h-9 px-3 rounded-md bg-white/[0.05] border border-white/10 text-white text-sm" value={formData.contratante_name} onChange={(e) => updateField("contratante_name", e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-white/60 text-[10px] font-bold uppercase">CPF/CNPJ Contratante</label>
-                <input className="w-full h-9 px-3 rounded-md bg-white/[0.05] border border-white/10 text-white text-sm" value={formData.contratante_document} onChange={(e) => updateField("contratante_document", e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-white/60 text-[10px] font-bold uppercase">Contratado</label>
-                <input className="w-full h-9 px-3 rounded-md bg-white/[0.05] border border-white/10 text-white text-sm" value="Adry Estações Gourmet" readOnly />
-              </div>
-              <div className="space-y-1">
-                <label className="text-white/60 text-[10px] font-bold uppercase">Nome Fantasia</label>
-                <input className="w-full h-9 px-3 rounded-md bg-white/[0.05] border border-white/10 text-white text-sm" value={formData.fantasy_name} onChange={(e) => updateField("fantasy_name", e.target.value)} placeholder="Adry Estações Gourmet" />
-              </div>
+              <Field label="CPF" value={formData.contratante_document} onChange={(v) => updateField("contratante_document", v)} placeholder="000.000.000-00" />
+              <Field label="Telefone/WhatsApp" value={formData.contratante_phone} onChange={(v) => updateField("contratante_phone", v)} placeholder="(00) 00000-0000" />
             </div>
-          </div>
+            <Field label="Endereço do Contratante" value={formData.contratante_address} onChange={(v) => updateField("contratante_address", v)} />
+          </Section>
 
-          <div className="border-t border-white/10 pt-4">
-            <h3 className="text-sm font-bold text-primary mb-3">Serviços Contratados</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {SERVICES.map((service) => (
-                <label key={service} className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.03] border border-white/5 cursor-pointer hover:bg-white/[0.06] transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={selectedServices.includes(service)}
-                    onChange={() => toggleService(service)}
-                    className="rounded border-white/20"
-                  />
-                  <span className="text-sm">{service}</span>
-                </label>
+          {/* Serviços */}
+          <Section title="Serviços Contratados">
+            <div className="flex flex-wrap gap-2 mb-3">
+              {unselectedServices.map((s) => (
+                <Button
+                  key={s.id}
+                  variant="outline"
+                  size="sm"
+                  className="border-white/10 bg-white/[0.03] hover:bg-white/[0.08] text-white text-xs gap-1"
+                  onClick={() => addService(s.id)}
+                >
+                  <Plus className="h-3 w-3" />
+                  {s.name}
+                </Button>
               ))}
             </div>
-          </div>
 
-          <div className="border-t border-white/10 pt-4">
-            <h3 className="text-sm font-bold text-primary mb-3">Evento</h3>
+            {services.length === 0 && (
+              <p className="text-muted-foreground text-xs italic">Nenhum serviço selecionado</p>
+            )}
+
+            {services.map((svc, si) => (
+              <div key={svc.service_id} className="p-3 rounded-lg bg-white/[0.03] border border-white/5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-primary">{svc.service_name}</h4>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive/60 hover:text-destructive" onClick={() => removeService(si)}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <Field label={`Qtd (${svc.items.length > 0 ? "un" : ""})`} type="number" value={svc.quantity || ""} onChange={(v) => updateService(si, "quantity", parseInt(v) || 0)} />
+                  <Field label="Valor Unit. (R$)" type="number" value={svc.unit_value || ""} onChange={(v) => updateService(si, "unit_value", parseFloat(v) || 0)} />
+                  <div className="space-y-1">
+                    <label className="text-white/60 text-[10px] font-bold uppercase">Total</label>
+                    <div className="h-9 px-3 rounded-md bg-white/[0.02] border border-white/5 text-white text-sm flex items-center">
+                      {formatCurrency(svc.total)}
+                    </div>
+                  </div>
+                </div>
+                <Field label="Observação" value={svc.observation} onChange={(v) => updateService(si, "observation", v)} placeholder="Ex: Sabores específicos..." />
+
+                <div className="space-y-2">
+                  <label className="text-white/60 text-[10px] font-bold uppercase">Itens Inclusos</label>
+                  {svc.items.map((item, ii) => (
+                    <div key={ii} className="flex gap-2">
+                      <Input
+                        className="h-8 bg-white/[0.03] border-white/5 text-white text-xs flex-1"
+                        value={item}
+                        onChange={(e) => updateServiceItem(si, ii, e.target.value)}
+                      />
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/40 hover:text-destructive" onClick={() => removeServiceItem(si, ii)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button variant="ghost" size="sm" className="text-xs text-primary hover:text-primary/80 gap-1" onClick={() => addServiceItem(si)}>
+                    <Plus className="h-3 w-3" /> Adicionar item
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </Section>
+
+          {/* Dados do Evento */}
+          <Section title="Dados do Evento">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Data do Evento" type="date" value={formData.event_date} onChange={(v) => updateField("event_date", v)} />
+              <Field label="Nº Convidados" type="number" value={formData.guest_count || ""} onChange={(v) => updateField("guest_count", parseInt(v) || 0)} />
+              <Field label="Horário Início" type="time" value={formData.event_start_time} onChange={(v) => updateField("event_start_time", v)} />
+              <Field label="Horário Término" type="time" value={formData.event_end_time} onChange={(v) => updateField("event_end_time", v)} />
+            </div>
+            <Field label="Local do Evento" value={formData.event_location} onChange={(v) => updateField("event_location", v)} />
+            <Field label="Endereço do Evento" value={formData.event_address} onChange={(v) => updateField("event_address", v)} />
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Cidade" value={formData.event_city} onChange={(v) => updateField("event_city", v)} />
+              <Field label="Estado" value={formData.event_state} onChange={(v) => updateField("event_state", v)} />
+              <Field label="CEP" value={formData.event_zip} onChange={(v) => updateField("event_zip", v)} />
+            </div>
+          </Section>
+
+          {/* Pagamento */}
+          <Section title="Valor e Pagamento">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Valor Total (R$)" type="number" value={formData.total_value || ""} onChange={(v) => updateField("total_value", parseFloat(v) || 0)} />
+              <Field label="Entrada (%)" type="number" value={formData.entry_percent || ""} onChange={(v) => updateField("entry_percent", parseFloat(v) || 0)} />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-white/60 text-[10px] font-bold uppercase">Data do Evento</label>
-                <input type="date" className="w-full h-9 px-3 rounded-md bg-white/[0.05] border border-white/10 text-white text-sm" value={formData.event_date} onChange={(e) => updateField("event_date", e.target.value)} />
+                <label className="text-white/60 text-[10px] font-bold uppercase">Valor Entrada</label>
+                <div className="h-9 px-3 rounded-md bg-white/[0.02] border border-white/5 text-white text-sm flex items-center font-bold">
+                  {formatCurrency(entryValue)}
+                </div>
               </div>
               <div className="space-y-1">
-                <label className="text-white/60 text-[10px] font-bold uppercase">Nº Convidados</label>
-                <input type="number" className="w-full h-9 px-3 rounded-md bg-white/[0.05] border border-white/10 text-white text-sm" value={formData.guest_count || ""} onChange={(e) => updateField("guest_count", parseInt(e.target.value) || 0)} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-white/60 text-[10px] font-bold uppercase">Horário Início</label>
-                <input type="time" className="w-full h-9 px-3 rounded-md bg-white/[0.05] border border-white/10 text-white text-sm" value={formData.event_start_time} onChange={(e) => updateField("event_start_time", e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-white/60 text-[10px] font-bold uppercase">Horário Término</label>
-                <input type="time" className="w-full h-9 px-3 rounded-md bg-white/[0.05] border border-white/10 text-white text-sm" value={formData.event_end_time} onChange={(e) => updateField("event_end_time", e.target.value)} />
-              </div>
-              <div className="space-y-1 col-span-2">
-                <label className="text-white/60 text-[10px] font-bold uppercase">Local do Evento</label>
-                <input className="w-full h-9 px-3 rounded-md bg-white/[0.05] border border-white/10 text-white text-sm" value={formData.event_location} onChange={(e) => updateField("event_location", e.target.value)} />
-              </div>
-              <div className="space-y-1 col-span-2">
-                <label className="text-white/60 text-[10px] font-bold uppercase">Endereço Completo</label>
-                <input className="w-full h-9 px-3 rounded-md bg-white/[0.05] border border-white/10 text-white text-sm" value={formData.event_address} onChange={(e) => updateField("event_address", e.target.value)} />
+                <label className="text-white/60 text-[10px] font-bold uppercase">Saldo Restante</label>
+                <div className="h-9 px-3 rounded-md bg-white/[0.02] border border-white/5 text-white text-sm flex items-center font-bold">
+                  {formatCurrency(balanceValue)}
+                </div>
               </div>
             </div>
-          </div>
-
-          <div className="border-t border-white/10 pt-4">
-            <h3 className="text-sm font-bold text-primary mb-3">Valores e Pagamento</h3>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-white/60 text-[10px] font-bold uppercase">Valor Total (R$)</label>
-                <input type="number" step="0.01" className="w-full h-9 px-3 rounded-md bg-white/[0.05] border border-white/10 text-white text-sm" value={formData.total_value || ""} onChange={(e) => updateField("total_value", parseFloat(e.target.value) || 0)} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-white/60 text-[10px] font-bold uppercase">Valor Entrada (R$)</label>
-                <input type="number" step="0.01" className="w-full h-9 px-3 rounded-md bg-white/[0.05] border border-white/10 text-white text-sm" value={formData.down_payment || ""} onChange={(e) => updateField("down_payment", parseFloat(e.target.value) || 0)} />
-              </div>
-              <div className="space-y-1 col-span-2">
-                <label className="text-white/60 text-[10px] font-bold uppercase">Forma de Pagamento</label>
-                <input className="w-full h-9 px-3 rounded-md bg-white/[0.05] border border-white/10 text-white text-sm" value={formData.payment_method} onChange={(e) => updateField("payment_method", e.target.value)} placeholder="Pix, Cartão, Dinheiro..." />
-              </div>
+              <Field label="Forma de Pagamento" value={formData.payment_method} onChange={(v) => updateField("payment_method", v)} placeholder="Pix, Cartão, Dinheiro..." />
+              <Field label="Data Limite Pgto Saldo" type="date" value={formData.payment_deadline} onChange={(v) => updateField("payment_deadline", v)} />
             </div>
-          </div>
+          </Section>
 
+          {/* Observações */}
           <div className="space-y-1">
             <label className="text-white/60 text-[10px] font-bold uppercase">Observações</label>
-            <textarea className="w-full h-16 px-3 rounded-md bg-white/[0.05] border border-white/10 text-white text-sm resize-none" value={formData.observations} onChange={(e) => updateField("observations", e.target.value)} />
+            <textarea
+              className="w-full h-20 px-3 rounded-md bg-white/[0.05] border border-white/10 text-white text-sm resize-none"
+              value={formData.observations}
+              onChange={(e) => updateField("observations", e.target.value)}
+            />
           </div>
 
-          <Button onClick={handleSave} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold" disabled={!selectedClientId}>
-            CRIAR CONTRATO
+          <Button onClick={handleSave} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold" disabled={!selectedClientId || services.length === 0}>
+            {editContract ? "SALVAR ALTERAÇÕES" : "CRIAR CONTRATO"}
           </Button>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-t border-white/10 pt-4 space-y-3">
+      <h3 className="text-sm font-bold text-primary">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function Field({ label, value, onChange, type = "text", placeholder = "" }: { label: string; value: any; onChange: (v: string) => void; type?: string; placeholder?: string }) {
+  return (
+    <div className="space-y-1">
+      <label className="text-white/60 text-[10px] font-bold uppercase">{label}</label>
+      <Input
+        type={type}
+        className="h-9 bg-white/[0.05] border-white/10 text-white text-sm"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+    </div>
   );
 }
