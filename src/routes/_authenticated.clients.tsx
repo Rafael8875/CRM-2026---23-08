@@ -424,9 +424,9 @@ function ClientsComponent() {
                                   <div className="flex justify-end gap-1">
                                     {contract.status !== "Fechado" && (
                                       <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-7 w-7 text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                                        variant="outline" 
+                                        size="sm"
+                                        className="h-7 text-green-400 border-green-500/30 hover:bg-green-500/10 hover:text-green-300 text-[10px] font-bold gap-1"
                                         title="Fechar contrato e gerar receita"
                                         onClick={() => {
                                           if (confirm("Fechar este contrato? Uma receita será gerada automaticamente.")) {
@@ -439,7 +439,8 @@ function ClientsComponent() {
                                         }}
                                         disabled={closeContractMutation.isPending}
                                       >
-                                        <CheckCircle className="h-3.5 w-3.5" />
+                                        <CheckCircle className="h-3 w-3" />
+                                        FECHAR
                                       </Button>
                                     )}
                                     <ContractFilesManager contractId={contract.id} contractNumber={contract.contract_number} />
