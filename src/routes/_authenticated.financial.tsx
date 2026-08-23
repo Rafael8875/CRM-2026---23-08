@@ -223,26 +223,40 @@ function FinancialComponent() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40 bg-task-dark border-border/50">
-                        <DropdownMenuItem 
-                          className="gap-2 cursor-pointer text-destructive focus:text-destructive"
-                          onClick={() => {
-                            if (confirm("Tem certeza que deseja excluir este lançamento?")) {
-                              deleteMutation.mutate(t.id);
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center justify-end gap-1">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40 bg-task-dark border-border/50">
+                          <DropdownMenuItem 
+                            className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                            onClick={() => {
+                              if (confirm("Tem certeza que deseja excluir este lançamento?")) {
+                                deleteMutation.mutate(t.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-destructive/60 hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          if (confirm("Tem certeza que deseja excluir este lançamento?")) {
+                            deleteMutation.mutate(t.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
