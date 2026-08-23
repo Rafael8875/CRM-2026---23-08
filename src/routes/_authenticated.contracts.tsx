@@ -41,7 +41,8 @@ import {
 
 import { listContractFiles, getContractFileUrl, deleteContractFile, getWhatsAppShareLink } from "@/lib/contracts.functions";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, FileDown } from "lucide-react";
+import { generateContractPdf } from "@/lib/contract-pdf";
 
 export const Route = createFileRoute("/_authenticated/contracts")({
   component: ContractsComponent,
@@ -253,6 +254,45 @@ function ContractsComponent() {
                               Fechar Contrato
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem 
+                            className="gap-2 cursor-pointer text-blue-400 focus:text-blue-300 focus:bg-blue-500/10 transition-colors"
+                            onClick={async () => {
+                              try {
+                                const pdfBytes = await generateContractPdf({
+                                  contratante_name: contract.contratante_name || contract.clients?.name,
+                                  contratante_document: contract.contratante_document,
+                                  fantasy_name: contract.fantasy_name,
+                                  guest_count: contract.guest_count,
+                                  event_date: contract.event_date,
+                                  event_start_time: contract.event_start_time,
+                                  event_end_time: contract.event_end_time,
+                                  event_location: contract.event_location,
+                                  event_address: contract.event_address,
+                                  total_value: contract.total_value,
+                                  payment_method: contract.payment_method,
+                                  down_payment: contract.down_payment,
+                                  services: contract.services,
+                                  observations: contract.observations,
+                                  service_description: contract.service_description,
+                                  client_name: contract.clients?.name,
+                                });
+                                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `contrato_${contract.contract_number || contract.id.slice(0,8)}.pdf`;
+                                a.click();
+                                URL.revokeObjectURL(url);
+                                toast.success("PDF gerado com sucesso!");
+                              } catch (err) {
+                                console.error(err);
+                                toast.error("Erro ao gerar PDF");
+                              }
+                            }}
+                          >
+                            <FileDown className="h-4 w-4" />
+                            Gerar PDF
+                          </DropdownMenuItem>
                           <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-white/5 focus:text-primary transition-colors">
                             <Edit className="h-4 w-4 text-task-blue" />
                             Editar
