@@ -22,6 +22,7 @@ import {
   ChevronDown,
   ChevronRight,
   Download,
+  CheckCircle,
   MessageCircle,
   Loader2,
   Upload,
@@ -178,6 +179,47 @@ function ClientsComponent() {
     onError: (error: any) => {
       console.error("Erro ao excluir contrato:", error);
       toast.error("Erro ao excluir contrato");
+    },
+  });
+
+  const closeContractMutation = useMutation({
+    mutationFn: async ({ id, total_value, service_description }: { id: string; total_value: number; service_description: string }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Não autenticado");
+
+      const { error } = await supabase
+        .from("contracts")
+        .update({ status: "Fechado" })
+        .eq("id", id);
+      if (error) throw error;
+
+      const { data: contract } = await supabase
+        .from("contracts")
+        .select("client_id")
+        .eq("id", id)
+        .single();
+
+      await supabase.from("transactions").insert({
+        user_id: user.id,
+        client_id: (contract as any)?.client_id,
+        contract_id: id,
+        type: "income",
+        amount: total_value,
+        status: "Pago",
+        description: `Receita do contrato: ${service_description || "Serviço"}`,
+        date: new Date().toISOString().split("T")[0],
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.refetchQueries({ queryKey: ["dashboard-stats"] });
+      toast.success("Contrato fechado e receita registrada!");
+    },
+    onError: (error: any) => {
+      console.error("Erro ao fechar contrato:", error);
+      toast.error("Erro ao fechar contrato");
     },
   });
 
@@ -380,6 +422,26 @@ function ClientsComponent() {
                                 </TableCell>
                                 <TableCell className="text-right px-4">
                                   <div className="flex justify-end gap-1">
+                                    {contract.status !== "Fechado" && (
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-7 w-7 text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                                        title="Fechar contrato e gerar receita"
+                                        onClick={() => {
+                                          if (confirm("Fechar este contrato? Uma receita será gerada automaticamente.")) {
+                                            closeContractMutation.mutate({
+                                              id: contract.id,
+                                              total_value: contract.total_value || 0,
+                                              service_description: contract.service_description || "",
+                                            });
+                                          }
+                                        }}
+                                        disabled={closeContractMutation.isPending}
+                                      >
+                                        <CheckCircle className="h-3.5 w-3.5" />
+                                      </Button>
+                                    )}
                                     <ContractFilesManager contractId={contract.id} contractNumber={contract.contract_number} />
                                     <Button 
                                       variant="ghost" 
