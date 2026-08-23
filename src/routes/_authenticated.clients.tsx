@@ -26,7 +26,8 @@ import {
   MessageCircle,
   Loader2,
   Upload,
-  X
+  X,
+  FileDown
 } from "lucide-react";
 import { 
   DropdownMenu, 
@@ -38,7 +39,6 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { generateContractPdf } from "@/lib/contract-pdf";
-import { FileDown, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
