@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_authenticated/agenda")({
 });
 
 const MONTH_NAMES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-const DAY_NAMES = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
+const DAY_NAMES = ["SEG","TER","QUA","QUI","SEX","SAB","DOM"];
 
 interface ManualEvent {
   id: string;
