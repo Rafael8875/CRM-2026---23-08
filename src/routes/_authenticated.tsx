@@ -4,7 +4,7 @@ import {
   Users, 
   DollarSign, 
   Calendar, 
-  DollarSign, 
+  BarChart3, 
   Settings,
   LogOut,
   Menu,
