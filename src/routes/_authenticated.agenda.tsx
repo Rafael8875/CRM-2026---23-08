@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_authenticated/agenda")({
 });
 
 const MONTH_NAMES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-const DAY_NAMES = ["SEG","TER","QUA","QUI","SEX","SAB","DOM"];
+const DAY_NAMES = ["Seg","Ter","Qua","Qui","Sex","Sab","Dom"];
 
 interface ManualEvent {
   id: string;
@@ -47,12 +47,12 @@ function MiniMonth({ year, month, events, contracts, onDayClick, selectedDate }:
   return (
     <Card className="bg-white/[0.02] border-white/5 overflow-hidden">
       <CardHeader className="p-3 pb-1">
-        <CardTitle className="text-white text-xs font-bold text-center">{MONTH_NAMES[month]} {year}</CardTitle>
+        <CardTitle className="text-white text-sm font-bold text-center uppercase tracking-wider">{MONTH_NAMES[month]}</CardTitle>
       </CardHeader>
       <CardContent className="p-2 pt-0">
         <div className="grid grid-cols-7 gap-0">
           {DAY_NAMES.map((d) => (
-            <div key={d} className="text-center text-[7px] font-bold text-muted-foreground py-0.5">{d}</div>
+            <div key={d} className="text-center text-[11px] font-black text-primary/80 py-1 uppercase" spellCheck={false}>{d}</div>
           ))}
           {Array.from({ length: firstDay }).map((_, i) => <div key={`e-${i}`} />)}
           {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -65,15 +65,18 @@ function MiniMonth({ year, month, events, contracts, onDayClick, selectedDate }:
               <button
                 key={day}
                 onClick={() => onDayClick(dateStr)}
-                className={`relative h-7 rounded text-[10px] font-bold transition-all ${
-                  isSelected ? "bg-primary text-white" : isToday ? "bg-white/10 text-primary" : ev.total > 0 ? "text-white hover:bg-white/5" : "text-white/50 hover:bg-white/5"
+                className={`relative h-8 rounded-lg text-xs font-black transition-all ${
+                  isSelected ? "bg-primary text-white shadow-lg shadow-primary/30" 
+                  : isToday ? "bg-primary/20 text-primary border border-primary/30" 
+                  : ev.total > 0 ? "bg-white/5 text-white hover:bg-white/10 border border-white/10" 
+                  : "text-white/70 hover:bg-white/5 hover:text-white"
                 }`}
               >
                 {day}
                 {ev.total > 0 && (
-                  <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
-                    {ev.contracts.length > 0 && <div className="w-1 h-1 rounded-full bg-blue-400" />}
-                    {ev.manual.length > 0 && <div className="w-1 h-1 rounded-full bg-green-400" />}
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
+                    {ev.contracts.length > 0 && <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-sm shadow-blue-400/50" />}
+                    {ev.manual.length > 0 && <div className="w-1.5 h-1.5 rounded-full bg-green-400 shadow-sm shadow-green-400/50" />}
                   </div>
                 )}
               </button>
