@@ -77,14 +77,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Adry Estações Gourmet" },
-      { name: "description", content: "Sistema de CRM e Contratos - Adry Estações Gourmet" },
-      { name: "author", content: "Adry Estações Gourmet" },
-      { property: "og:title", content: "Adry Estações Gourmet" },
-      { property: "og:description", content: "Sistema de CRM e Contratos - Adry Estações Gourmet" },
+      { title: "CRM Festa e Eventos" },
+      { name: "description", content: "Sistema de CRM e Contratos - CRM Festa e Eventos" },
+      { name: "author", content: "CRM Festa e Eventos" },
+      { property: "og:title", content: "CRM Festa e Eventos" },
+      { property: "og:description", content: "Sistema de CRM e Contratos - CRM Festa e Eventos" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@AdryEstacoes" },
+      { name: "twitter:site", content: "@CRMFestaEventos" },
     ],
     links: [
       {
