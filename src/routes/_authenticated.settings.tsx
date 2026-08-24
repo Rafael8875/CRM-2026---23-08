@@ -20,6 +20,7 @@ function SettingsComponent() {
   const [isUploading, setIsUploading] = useState(false);
   const [templateTitle, setTemplateTitle] = useState("");
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [grokApiKey, setGrokApiKey] = useState(() => localStorage.getItem("grok_api_key") || "");
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const queryClient = useQueryClient();
@@ -135,6 +136,10 @@ function SettingsComponent() {
           <TabsTrigger value="users" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold px-6">
             <Users className="h-4 w-4 mr-2" />
             USUÁRIOS
+          </TabsTrigger>
+          <TabsTrigger value="grok" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold px-6">
+            <ShieldCheck className="h-4 w-4 mr-2" />
+            GROK (IA)
           </TabsTrigger>
         </TabsList>
 
@@ -277,6 +282,45 @@ function SettingsComponent() {
                     ))}
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="grok" className="animate-in fade-in slide-in-from-bottom-2">
+          <Card className="bg-white/[0.02] border-white/5 backdrop-blur-md shadow-2xl">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                Configuração do Grok (xAI)
+              </CardTitle>
+              <CardDescription className="text-muted-foreground">
+                Configure sua chave de API do Grok para gerar contratos automaticamente.
+                <br />
+                Obtenha sua chave em: <a href="https://console.x.ai" target="_blank" className="text-primary hover:underline">console.x.ai</a>
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Chave API (xAI)</label>
+                  <Input
+                    type="password"
+                    placeholder="xai-..."
+                    value={grokApiKey}
+                    onChange={(e) => setGrokApiKey(e.target.value)}
+                    className="bg-white/[0.05] border-white/10"
+                  />
+                </div>
+                <Button
+                  onClick={() => {
+                    localStorage.setItem("grok_api_key", grokApiKey);
+                    toast.success("Chave API salva!");
+                  }}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
+                >
+                  SALVAR CHAVE
+                </Button>
               </div>
             </CardContent>
           </Card>

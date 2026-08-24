@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Trash2, Plus, Upload, FileText } from "lucide-react";
 import { extractTextFromPdf, parseContractText } from "@/lib/pdf-extract";
+import { generateContractWithGrok } from "@/lib/grok-generate";
 
 const AVAILABLE_SERVICES = [
   { id: "churros", name: "Churros", unit: "unidades", defaultItems: ["Estação de Churros", "Insumos e produtos necessários", "Estrutura e utensílios", "Equipe para operação", "Montagem e desmontagem", "Serviço no horário contratado"] },
@@ -90,6 +91,7 @@ export function ContractModal({ open, onOpenChange, clientId, editContract }: Co
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
   const [pasteText, setPasteText] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handlePdfImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -172,6 +174,40 @@ export function ContractModal({ open, onOpenChange, clientId, editContract }: Co
     }
     toast.success("Dados extraídos do texto!");
     setPasteText("");
+  };
+
+  const handleGenerateWithGrok = async () => {
+    const apiKey = localStorage.getItem("grok_api_key");
+    if (!apiKey) {
+      toast.error("Configure a chave API do Grok em Configurações");
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const contractText = await generateContractWithGrok(apiKey, {
+        contratante_name: formData.contratante_name,
+        contratante_document: formData.contratante_document,
+        contratante_phone: formData.contratante_phone,
+        fantasy_name: formData.fantasy_name,
+        event_date: formData.event_date,
+        event_location: formData.event_location,
+        event_address: formData.event_address,
+        event_city: formData.event_city,
+        event_state: formData.event_state,
+        guest_count: formData.guest_count,
+        total_value: formData.total_value,
+        entry_percent: formData.entry_percent,
+        payment_method: formData.payment_method,
+        services: services.map((s) => s.service_name),
+        observations: formData.observations,
+      });
+      updateField("contract_text", contractText);
+      toast.success("Contrato gerado pelo Grok!");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao gerar contrato com Grok");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const { data: clients } = useQuery({
@@ -534,6 +570,29 @@ export function ContractModal({ open, onOpenChange, clientId, editContract }: Co
               <Field label="Data Limite Pgto Saldo" type="date" value={formData.payment_deadline} onChange={(v) => updateField("payment_deadline", v)} />
             </div>
           </Section>
+
+          {/* Contrato Gerado */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-white/60 text-[10px] font-bold uppercase">Texto do Contrato</label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-[10px] border-primary/30 text-primary hover:bg-primary/10"
+                onClick={handleGenerateWithGrok}
+                disabled={isGenerating}
+              >
+                {isGenerating ? "Gerando..." : "Gerar com Grok"}
+              </Button>
+            </div>
+            <textarea
+              className="w-full h-40 px-3 rounded-md bg-white/[0.05] border border-white/10 text-white text-xs resize-none placeholder:text-white/20"
+              placeholder="Cole ou gere o texto do contrato aqui..."
+              value={formData.contract_text}
+              onChange={(e) => updateField("contract_text", e.target.value)}
+            />
+          </div>
 
           {/* Observações */}
           <div className="space-y-1">
