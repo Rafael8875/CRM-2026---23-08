@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Upload, FileText } from "lucide-react";
+import { extractTextFromPdf, parseContractText } from "@/lib/pdf-extract";
 
 const AVAILABLE_SERVICES = [
   { id: "churros", name: "Churros", unit: "unidades", defaultItems: ["Estação de Churros", "Insumos e produtos necessários", "Estrutura e utensílios", "Equipe para operação", "Montagem e desmontagem", "Serviço no horário contratado"] },
@@ -87,6 +88,91 @@ export function ContractModal({ open, onOpenChange, clientId, editContract }: Co
   const [selectedClientId, setSelectedClientId] = useState(clientId || "");
   const [formData, setFormData] = useState<ContractFormData>(defaultFormData);
   const [services, setServices] = useState<ServiceItem[]>([]);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+
+  const handlePdfImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsExtracting(true);
+    try {
+      const text = await extractTextFromPdf(file);
+      const parsed = parseContractText(text);
+
+      if (parsed.contratante_name) {
+        const client = clients?.find((c: any) =>
+          c.name.toLowerCase().includes(parsed.contratante_name!.toLowerCase())
+        );
+        if (client) setSelectedClientId(client.id);
+        updateField("contratante_name", parsed.contratante_name);
+      }
+      if (parsed.contratante_document) updateField("contratante_document", parsed.contratante_document);
+      if (parsed.contratante_phone) updateField("contratante_phone", parsed.contratante_phone);
+      if (parsed.total_value) updateField("total_value", parsed.total_value);
+      if (parsed.event_date) updateField("event_date", parsed.event_date);
+      if (parsed.services) {
+        const newServices: ServiceItem[] = [];
+        for (const svcId of parsed.services) {
+          const available = AVAILABLE_SERVICES.find((s) => s.id === svcId);
+          if (available) {
+            newServices.push({
+              service_id: available.id,
+              service_name: available.name,
+              quantity: 0,
+              unit_value: 0,
+              total: 0,
+              observation: "",
+              items: [...available.defaultItems],
+            });
+          }
+        }
+        setServices(newServices);
+      }
+      toast.success("Dados extraídos do PDF!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao extrair dados do PDF");
+    } finally {
+      setIsExtracting(false);
+      e.target.value = "";
+    }
+  };
+
+  const handlePasteImport = () => {
+    if (!pasteText.trim()) return;
+    const parsed = parseContractText(pasteText);
+    if (parsed.contratante_name) {
+      const client = clients?.find((c: any) =>
+        c.name.toLowerCase().includes(parsed.contratante_name!.toLowerCase())
+      );
+      if (client) setSelectedClientId(client.id);
+      updateField("contratante_name", parsed.contratante_name);
+    }
+    if (parsed.contratante_document) updateField("contratante_document", parsed.contratante_document);
+    if (parsed.contratante_phone) updateField("contratante_phone", parsed.contratante_phone);
+    if (parsed.total_value) updateField("total_value", parsed.total_value);
+    if (parsed.event_date) updateField("event_date", parsed.event_date);
+    if (parsed.services) {
+      const newServices: ServiceItem[] = [];
+      for (const svcId of parsed.services) {
+        const available = AVAILABLE_SERVICES.find((s) => s.id === svcId);
+        if (available) {
+          newServices.push({
+            service_id: available.id,
+            service_name: available.name,
+            quantity: 0,
+            unit_value: 0,
+            total: 0,
+            observation: "",
+            items: [...available.defaultItems],
+          });
+        }
+      }
+      setServices(newServices);
+    }
+    toast.success("Dados extraídos do texto!");
+    setPasteText("");
+  };
 
   const { data: clients } = useQuery({
     queryKey: ["clients-lite"],
@@ -288,7 +374,36 @@ export function ContractModal({ open, onOpenChange, clientId, editContract }: Co
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-5 pt-4">
+        <div className="border border-dashed border-white/20 rounded-xl p-4 text-center bg-white/[0.02]">
+          <label className="cursor-pointer flex flex-col items-center gap-2">
+            <input type="file" accept=".pdf,.txt" className="hidden" onChange={handlePdfImport} disabled={isExtracting} />
+            {isExtracting ? (
+              <FileText className="h-6 w-6 text-primary animate-pulse" />
+            ) : (
+              <Upload className="h-6 w-6 text-primary" />
+            )}
+            <span className="text-xs text-muted-foreground">
+              {isExtracting ? "Extraindo dados..." : "Importar PDF/contrato para preencher automático"}
+            </span>
+          </label>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-white/60 text-[10px] font-bold uppercase">Ou cole o texto do contrato</label>
+          <textarea
+            className="w-full h-20 px-3 rounded-md bg-white/[0.05] border border-white/10 text-white text-xs resize-none placeholder:text-white/20"
+            placeholder="Cole aqui o texto do contrato antigo..."
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+          />
+          {pasteText.trim() && (
+            <Button variant="outline" size="sm" className="text-xs border-primary/30 text-primary hover:bg-primary/10" onClick={handlePasteImport}>
+              Extrair dados do texto
+            </Button>
+          )}
+        </div>
+
+        <div className="space-y-5 pt-2">
           {/* Cliente */}
           <div className="space-y-2">
             <label className="text-white/80 font-bold uppercase text-[10px] tracking-widest">Cliente</label>
