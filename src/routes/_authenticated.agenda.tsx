@@ -51,8 +51,8 @@ function MiniMonth({ year, month, events, contracts, onDayClick, selectedDate }:
       </CardHeader>
       <CardContent className="p-2 pt-0">
         <div className="grid grid-cols-7 gap-0">
-          {DAY_NAMES.map((d) => (
-            <div key={d} className="text-center text-[11px] font-black text-primary/80 py-1 uppercase" spellCheck={false}>{d}</div>
+          {DAY_NAMES.map((d, idx) => (
+            <div key={d} className={`text-center text-[11px] font-black text-primary/80 py-1 uppercase select-none ${idx < DAY_NAMES.length - 1 ? "border-r border-white/10" : ""}`} data-gramm="false" spellCheck="false" autoComplete="off">{d}</div>
           ))}
           {Array.from({ length: firstDay }).map((_, i) => <div key={`e-${i}`} />)}
           {Array.from({ length: daysInMonth }).map((_, i) => {
