@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_authenticated/agenda")({
 });
 
 const MONTH_NAMES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-const DAY_NAMES = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+const DAY_NAMES = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
 
 interface ManualEvent {
   id: string;
@@ -34,7 +34,7 @@ function AgendaComponent() {
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  const firstDay = new Date(year, month, 1).getDay();
+  const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date();
 
