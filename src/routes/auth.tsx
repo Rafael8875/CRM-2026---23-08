@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3 } from "lucide-react";
+import { DollarSign } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -89,7 +89,7 @@ function AuthComponent() {
       <Card className="w-full max-w-md border-white/5 bg-white/[0.02] backdrop-blur-2xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] rounded-3xl overflow-hidden relative z-10 animate-in zoom-in-95 duration-500">
         <CardHeader className="space-y-2 p-8 pt-10 text-center">
           <div className="mx-auto h-12 w-12 rounded-2xl bg-primary flex items-center justify-center shadow-2xl shadow-primary/20 mb-4">
-            <BarChart3 className="h-7 w-7 text-primary-foreground" />
+            <DollarSign className="h-7 w-7 text-primary-foreground" />
           </div>
           <CardTitle className="text-3xl font-black text-white tracking-tight">CRM Festa e Eventos</CardTitle>
           <CardDescription className="text-muted-foreground font-medium">Acesse sua plataforma financeira</CardDescription>

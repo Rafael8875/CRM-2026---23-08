@@ -4,7 +4,7 @@ import {
   Users, 
   DollarSign, 
   Calendar, 
-  BarChart3, 
+  DollarSign, 
   Settings,
   LogOut,
   Menu,
@@ -72,7 +72,7 @@ function AuthenticatedLayout() {
         <div className="flex h-20 items-center px-8">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-              <BarChart3 className="h-5 w-5 text-primary-foreground" />
+              <DollarSign className="h-5 w-5 text-primary-foreground" />
             </div>
             <span className="text-xl font-extrabold tracking-tight text-white">CRM Festa e Eventos</span>
           </div>
@@ -109,7 +109,7 @@ function AuthenticatedLayout() {
         <header className="flex h-20 items-center justify-between border-b border-white/5 bg-white/[0.02] backdrop-blur-xl px-6 lg:hidden shadow-2xl">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-              <BarChart3 className="h-5 w-5 text-primary-foreground" />
+              <DollarSign className="h-5 w-5 text-primary-foreground" />
             </div>
             <span className="text-xl font-extrabold tracking-tight text-white">CRM Festa e Eventos</span>
           </div>
@@ -124,7 +124,7 @@ function AuthenticatedLayout() {
               <div className="flex items-center justify-between mb-10">
                 <div className="flex items-center gap-2.5">
                   <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                    <BarChart3 className="h-5 w-5 text-primary-foreground" />
+                    <DollarSign className="h-5 w-5 text-primary-foreground" />
                   </div>
                   <span className="text-xl font-extrabold tracking-tight text-white">CRM Festa e Eventos</span>
                 </div>

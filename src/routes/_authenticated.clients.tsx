@@ -343,7 +343,7 @@ function ClientsComponent() {
                   </div>
                   
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    <Badge variant="outline" className="text-xs font-bold">
+                    <Badge variant="outline" className="text-xs font-bold border-white/20 text-white bg-white/10 px-3 py-1">
                       {clientContracts.length} {clientContracts.length === 1 ? 'contrato' : 'contratos'}
                     </Badge>
                     <Button 
@@ -360,7 +360,7 @@ function ClientsComponent() {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="h-8 w-8 text-destructive/60 hover:text-destructive hover:bg-destructive/10"
+                      className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 rounded-lg"
                       onClick={() => {
                         if (confirm("Tem certeza que deseja excluir este cliente?")) {
                           deleteClientMutation.mutate(client.id);
@@ -490,7 +490,7 @@ function ClientsComponent() {
                                     <Button 
                                       variant="ghost" 
                                       size="icon" 
-                                      className="h-7 w-7 text-destructive/60 hover:text-destructive hover:bg-destructive/10"
+                                      className="h-7 w-7 text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 rounded-lg"
                                       onClick={() => {
                                         if (confirm("Tem certeza que deseja excluir este contrato?")) {
                                           deleteContractMutation.mutate(contract.id);
