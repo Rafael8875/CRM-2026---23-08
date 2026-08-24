@@ -21,6 +21,7 @@ interface ContractData {
 export async function generateContractWithGrok(
   apiKey: string,
   data: ContractData,
+  model: string = "grok-4",
 ): Promise<string> {
   const servicesText =
     data.services && data.services.length > 0
@@ -63,7 +64,7 @@ INSTRUÇÕES:
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "grok-4",
+      model: model,
       messages: [
         {
           role: "system",

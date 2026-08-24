@@ -94,7 +94,7 @@ function ContractsComponent() {
   });
 
   const closeContractMutation = useMutation({
-    mutationFn: async ({ id, total_value, service_description }: { id: string; total_value: number; service_description: string }) => {
+    mutationFn: async ({ id, total_value, description }: { id: string; total_value: number; description: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
 
@@ -117,7 +117,7 @@ function ContractsComponent() {
         type: "income",
         amount: total_value,
         status: "Pago",
-        description: `Receita do contrato: ${service_description || "Serviço"}`,
+        description: `Receita do contrato: ${description || "Serviço"}`,
         date: new Date().toISOString().split("T")[0],
       });
     },
@@ -137,7 +137,7 @@ function ContractsComponent() {
   const filteredContracts = contracts?.filter((contract: any) =>
     contract.clients?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     contract.contract_number?.includes(searchTerm) ||
-    contract.service_description?.toLowerCase().includes(searchTerm.toLowerCase())
+    contract.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusBadge = (status: string) => {
@@ -220,7 +220,7 @@ function ContractsComponent() {
                     {contract.clients?.name}
                   </TableCell>
                   <TableCell className="px-6 py-4 max-w-[200px] truncate text-xs font-medium text-muted-foreground">
-                    {contract.service_description || "-"}
+                    {contract.description || "-"}
                   </TableCell>
                   <TableCell className="px-6 py-4 font-black text-white">{formatCurrency(contract.total_value)}</TableCell>
                   <TableCell className="px-6 py-4">
@@ -245,7 +245,7 @@ function ContractsComponent() {
                                   closeContractMutation.mutate({
                                     id: contract.id,
                                     total_value: contract.total_value || 0,
-                                    service_description: contract.service_description || "",
+                                    description: contract.description || "",
                                   });
                                 }
                               }}
@@ -273,7 +273,7 @@ function ContractsComponent() {
                                   down_payment: contract.down_payment,
                                   services: contract.services,
                                   observations: contract.observations,
-                                  service_description: contract.service_description,
+                                  description: contract.description,
                                   client_name: contract.clients?.name,
                                 });
                                 const blob = new Blob([pdfBytes], { type: 'application/pdf' });

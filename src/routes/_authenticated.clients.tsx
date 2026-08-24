@@ -411,7 +411,7 @@ function ClientsComponent() {
                                   #{contract.contract_number || contract.id.slice(0, 8)}
                                 </TableCell>
                                 <TableCell className="px-4 py-3 text-xs font-medium text-white max-w-[200px] truncate">
-                                  {contract.service_description || "-"}
+                                  {contract.description || "-"}
                                 </TableCell>
                                 <TableCell className="px-4 py-3 font-black text-white text-xs">
                                   {formatCurrency(contract.total_value)}
@@ -435,7 +435,7 @@ function ClientsComponent() {
                                             closeContractMutation.mutate({
                                               id: contract.id,
                                               total_value: contract.total_value || 0,
-                                              service_description: contract.service_description || "",
+                                              service_description: contract.description || "",
                                             });
                                           }
                                         }}
@@ -467,7 +467,7 @@ function ClientsComponent() {
                                             down_payment: contract.down_payment,
                                             services: contract.services,
                                             observations: contract.observations,
-                                            service_description: contract.service_description,
+                                            service_description: contract.description,
                                             client_name: contract.clients?.name,
                                           });
                                           const blob = new Blob([pdfBytes], { type: 'application/pdf' });
