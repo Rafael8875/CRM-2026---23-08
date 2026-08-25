@@ -19,7 +19,8 @@ interface ChatResponse {
 export const sendChatMessage = createServerFn({ method: "POST" })
   .validator((val: ChatRequest) => val)
   .handler(async ({ data: input }) => {
-    const { sessionId, message, apiKey, model = "grok-4" } = input;
+    const { sessionId, message, apiKey: clientKey, model = "grok-4" } = input;
+    const apiKey = clientKey || process.env.GROK_API_KEY || "";
 
     // Get existing messages
     const { data: existingMessages } = await supabase

@@ -72,24 +72,11 @@ export function ChatWidget() {
         setSessionId(currentSessionId);
       }
 
-      if (!apiKey) {
-        const assistantMessage: Message = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content:
-            "⚠️ Chave da API Grok não configurada. Por favor, configure nas Configurações do CRM.",
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-        setIsLoading(false);
-        return;
-      }
-
       const result = await sendChatMessage({
         data: {
           sessionId: currentSessionId,
           message: userMessage.content,
-          apiKey,
+          apiKey: apiKey || "",
           model: "grok-4",
         },
       });

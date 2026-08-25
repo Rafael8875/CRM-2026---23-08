@@ -91,25 +91,11 @@ function ChatPage() {
     setIsLoading(true);
 
     try {
-      if (!apiKey) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: "⚠️ Chave da API Grok não configurada. Vá em Configurações → Grok (IA).",
-            created_at: new Date().toISOString(),
-          },
-        ]);
-        setIsLoading(false);
-        return;
-      }
-
       const result = await sendChatMessage({
         data: {
           sessionId: selectedSession,
           message: userMessage.content,
-          apiKey,
+          apiKey: apiKey || "",
           model: "grok-4",
         },
       });
