@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { supabase } from "../integrations/supabase/client";
 
 const GROK_API_URL = "https://api.x.ai/v1";
 
@@ -23,28 +24,17 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       };
     }
 
-    // Load Supabase admin client (server-side, bypasses RLS)
-    let supabase: any = null;
-    try {
-      const mod = await import("../integrations/supabase/client.server");
-      supabase = mod.supabaseAdmin;
-    } catch {
-      // Fallback: no DB
-    }
-
-    // Get existing messages from DB
+    // Get existing messages from DB (try/catch in case table doesn't exist)
     let existingMessages: { role: string; content: string }[] = [];
-    if (supabase) {
-      try {
-        const { data } = await supabase
-          .from("chat_messages")
-          .select("role, content")
-          .eq("session_id", sessionId)
-          .order("created_at", { ascending: true });
-        existingMessages = data || [];
-      } catch {
-        // Table may not exist
-      }
+    try {
+      const { data } = await supabase
+        .from("chat_messages")
+        .select("role, content")
+        .eq("session_id", sessionId)
+        .order("created_at", { ascending: true });
+      existingMessages = data || [];
+    } catch {
+      // Table may not exist yet
     }
 
     // Build conversation history
@@ -85,34 +75,20 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const data = await response.json();
     const reply = data.choices[0].message.content;
 
-    // Save messages to DB
-    if (supabase) {
-      try {
-        // Save user message
-        await supabase.from("chat_messages").insert({
-          session_id: sessionId,
-          role: "user",
-          content: message,
-        });
-
-        // Save assistant message
-        await supabase.from("chat_messages").insert({
-          session_id: sessionId,
-          role: "assistant",
-          content: reply,
-        });
-
-        // Update session title if first message
-        if (existingMessages.length === 0) {
-          const title = message.length > 50 ? message.substring(0, 50) + "..." : message;
-          await supabase
-            .from("chat_sessions")
-            .update({ title })
-            .eq("id", sessionId);
-        }
-      } catch (err) {
-        console.error("Error saving chat messages:", err);
-      }
+    // Save messages to DB (try/catch)
+    try {
+      await supabase.from("chat_messages").insert({
+        session_id: sessionId,
+        role: "user",
+        content: message,
+      });
+      await supabase.from("chat_messages").insert({
+        session_id: sessionId,
+        role: "assistant",
+        content: reply,
+      });
+    } catch {
+      // Table may not exist yet
     }
 
     // Detect closing intent
