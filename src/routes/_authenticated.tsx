@@ -8,7 +8,8 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  MessageCircle
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ function AuthenticatedLayout() {
     { label: "Clientes e Contratos", icon: Users, to: "/clients" },
     { label: "Financeiro", icon: DollarSign, to: "/financial" },
     { label: "Agenda", icon: Calendar, to: "/agenda" },
+    { label: "Chat IA", icon: MessageCircle, to: "/chat" },
     { label: "Relatórios", icon: BarChart3, to: "/reports" },
     { label: "Configurações", icon: Settings, to: "/settings" },
   ];
