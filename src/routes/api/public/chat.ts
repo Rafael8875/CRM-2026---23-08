@@ -1,63 +1,40 @@
-import { createServerFn } from "@tanstack/react-start";
+import { defineEventHandler, readBody, setHeader } from "h3";
 
 const GROK_API_URL = "https://api.x.ai/v1";
 
-interface ChatRequest {
-  sessionId: string;
-  message: string;
-  apiKey: string;
-  model?: string;
-}
+export default defineEventHandler(async (event) => {
+  setHeader(event, "Access-Control-Allow-Origin", "*");
+  setHeader(event, "Access-Control-Allow-Methods", "POST, OPTIONS");
+  setHeader(event, "Access-Control-Allow-Headers", "Content-Type");
 
-export const sendChatMessage = createServerFn({ method: "POST" })
-  .validator((val: ChatRequest) => val)
-  .handler(async ({ data: input }) => {
-    const { sessionId, message, apiKey: clientKey, model = "grok-4" } = input;
-    const apiKey = clientKey || process.env.GROK_API_KEY || "";
+  if (event.method === "OPTIONS") {
+    return "";
+  }
 
-    if (!apiKey) {
-      return {
-        reply: "Serviço indisponível no momento. Fale conosco no WhatsApp: (79) 99884-4913",
-        sessionId,
-        shouldClose: false,
-      };
-    }
+  const body = await readBody(event);
+  const { message, history = [], sessionId = "default" } = body;
 
-    // Load Supabase admin client (server-side, bypasses RLS)
-    let supabase: any = null;
-    try {
-      const mod = await import("../integrations/supabase/client.server");
-      supabase = mod.supabaseAdmin;
-    } catch {
-      // Fallback: no DB
-    }
+  if (!message) {
+    return { error: "Message is required" };
+  }
 
-    // Get existing messages from DB
-    let existingMessages: { role: string; content: string }[] = [];
-    if (supabase) {
-      try {
-        const { data } = await supabase
-          .from("chat_messages")
-          .select("role, content")
-          .eq("session_id", sessionId)
-          .order("created_at", { ascending: true });
-        existingMessages = data || [];
-      } catch {
-        // Table may not exist
-      }
-    }
+  const apiKey = process.env.GROK_API_KEY || "";
+  if (!apiKey) {
+    return {
+      reply: "Serviço indisponível no momento. Fale conosco no WhatsApp: (79) 99884-4913",
+    };
+  }
 
-    // Build conversation history
-    const messages = [
-      { role: "system" as const, content: SYSTEM_PROMPT },
-      ...existingMessages.map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
-      { role: "user" as const, content: message },
-    ];
+  const messages = [
+    { role: "system", content: SYSTEM_PROMPT },
+    ...history.map((h: { role: string; content: string }) => ({
+      role: h.role,
+      content: h.content,
+    })),
+    { role: "user", content: message },
+  ];
 
-    // Call Grok API
+  try {
     const response = await fetch(`${GROK_API_URL}/chat/completions`, {
       method: "POST",
       headers: {
@@ -65,7 +42,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model,
+        model: "grok-4",
         messages,
         temperature: 0.7,
         max_tokens: 1500,
@@ -76,56 +53,46 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       const err = await response.text();
       console.error("Grok API error:", err);
       return {
-        reply: "Desculpe, tive um problema com a IA. Tente novamente ou fale conosco no WhatsApp: (79) 99884-4913",
-        sessionId,
-        shouldClose: false,
+        reply: "Desculpe, tive um problema. Tente novamente ou fale conosco no WhatsApp: (79) 99884-4913",
       };
     }
 
     const data = await response.json();
     const reply = data.choices[0].message.content;
 
-    // Save messages to DB
-    if (supabase) {
-      try {
-        // Save user message
-        await supabase.from("chat_messages").insert({
-          session_id: sessionId,
-          role: "user",
-          content: message,
-        });
+    // Save to DB
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabaseUrl = process.env.SUPABASE_URL || "";
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
-        // Save assistant message
-        await supabase.from("chat_messages").insert({
-          session_id: sessionId,
-          role: "assistant",
-          content: reply,
-        });
+      if (supabaseUrl && supabaseKey) {
+        const supabase = createClient(supabaseUrl, supabaseKey);
 
-        // Update session title if first message
-        if (existingMessages.length === 0) {
-          const title = message.length > 50 ? message.substring(0, 50) + "..." : message;
-          await supabase
-            .from("chat_sessions")
-            .update({ title })
-            .eq("id", sessionId);
-        }
-      } catch (err) {
-        console.error("Error saving chat messages:", err);
+        // Upsert session
+        await supabase.from("chat_sessions").upsert(
+          { id: sessionId, title: message.substring(0, 50), status: "active" },
+          { onConflict: "id" }
+        );
+
+        // Save messages
+        await supabase.from("chat_messages").insert([
+          { session_id: sessionId, role: "user", content: message },
+          { session_id: sessionId, role: "assistant", content: reply },
+        ]);
       }
+    } catch {
+      // DB optional
     }
 
-    // Detect closing intent
-    const lowerMsg = message.toLowerCase();
-    const shouldClose =
-      lowerMsg.includes("fechar") ||
-      lowerMsg.includes("fechado") ||
-      lowerMsg.includes("confirmo") ||
-      lowerMsg.includes("vamos fechar") ||
-      lowerMsg.includes("quero fechar");
-
-    return { reply, sessionId, shouldClose };
-  });
+    return { reply };
+  } catch (error) {
+    console.error("Chat error:", error);
+    return {
+      reply: "Desculpe, tive um problema. Tente novamente ou fale conosco no WhatsApp: (79) 99884-4913",
+    };
+  }
+});
 
 const SYSTEM_PROMPT = `Você é a assistente virtual da Adry Batista Estações Gourmet, uma empresa de festas e eventos em Aracaju-SE.
 
@@ -191,5 +158,4 @@ Você ajuda clientes a montar o evento perfeito, sugerindo serviços, negociando
 ## IMPORTANTE
 - NUNCA invente preços diferentes dos listados
 - NUNCA prometa algo que não está nos serviços
-- SEMPRE redirecione para o WhatsApp (79) 99884-4913 para dúvidas urgentes
-- Quando o cliente quiser fechar, colete os dados e confirme`;
+- SEMPRE redirecione para o WhatsApp (79) 99884-4913 para dúvidas urgentes`;

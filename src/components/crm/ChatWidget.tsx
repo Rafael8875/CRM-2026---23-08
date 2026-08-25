@@ -10,7 +10,6 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  timestamp: Date;
 }
 
 export function ChatWidget() {
@@ -19,19 +18,16 @@ export function ChatWidget() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [apiKey, setApiKey] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const key = localStorage.getItem("grok_api_key");
-    if (key) setApiKey(key);
-  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const createSession = async () => {
+  const getOrCreateSession = async () => {
+    if (sessionId) return sessionId;
+
+    // Create new session in Supabase
     const { data, error } = await supabase
       .from("chat_sessions")
       .insert({
@@ -41,12 +37,33 @@ export function ChatWidget() {
       .select()
       .single();
 
-    if (error) {
-      console.error("Error creating session:", error);
-      return null;
+    if (data) {
+      setSessionId(data.id);
+      return data.id;
     }
-    return data.id;
+
+    // Fallback: use random ID if table doesn't exist
+    const fallbackId = crypto.randomUUID();
+    setSessionId(fallbackId);
+    return fallbackId;
   };
+
+  const loadMessages = async (sid: string) => {
+    const { data } = await supabase
+      .from("chat_messages")
+      .select("id, role, content")
+      .eq("session_id", sid)
+      .order("created_at", { ascending: true });
+
+    if (data && data.length > 0) {
+      setMessages(data.map((m) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content })));
+    }
+  };
+
+  // Load messages when session changes
+  useEffect(() => {
+    if (sessionId) loadMessages(sessionId);
+  }, [sessionId]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -55,7 +72,6 @@ export function ChatWidget() {
       id: crypto.randomUUID(),
       role: "user",
       content: input.trim(),
-      timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -63,20 +79,13 @@ export function ChatWidget() {
     setIsLoading(true);
 
     try {
-      let currentSessionId = sessionId;
-      if (!currentSessionId) {
-        currentSessionId = await createSession();
-        if (!currentSessionId) {
-          throw new Error("Failed to create session");
-        }
-        setSessionId(currentSessionId);
-      }
+      const currentSessionId = await getOrCreateSession();
 
       const result = await sendChatMessage({
         data: {
           sessionId: currentSessionId,
           message: userMessage.content,
-          apiKey: apiKey || "",
+          apiKey: "",
           model: "grok-4",
         },
       });
@@ -85,7 +94,6 @@ export function ChatWidget() {
         id: crypto.randomUUID(),
         role: "assistant",
         content: result.reply,
-        timestamp: new Date(),
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
@@ -93,9 +101,7 @@ export function ChatWidget() {
       const errorMessage: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content:
-          "Desculpe, tive um problema. Tente novamente ou fale conosco no WhatsApp: (79) 99884-4913",
-        timestamp: new Date(),
+        content: "Desculpe, tive um problema. Tente novamente ou fale conosco no WhatsApp: (79) 99884-4913",
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -134,9 +140,7 @@ export function ChatWidget() {
               <Bot className="h-6 w-6 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="text-white font-bold text-sm">
-                Adry Estações Gourmet
-              </h3>
+              <h3 className="text-white font-bold text-sm">Adry Estações Gourmet</h3>
               <p className="text-white/80 text-xs">Assistente Virtual</p>
             </div>
             <div className="h-3 w-3 rounded-full bg-green-400 animate-pulse" />
@@ -148,19 +152,14 @@ export function ChatWidget() {
               {messages.length === 0 && (
                 <div className="text-center text-gray-400 py-8">
                   <Bot className="h-12 w-12 mx-auto mb-3 text-orange-400" />
-                  <p className="text-sm font-medium">
-                    Olá! 👋 Como posso ajudar?
-                  </p>
+                  <p className="text-sm font-medium">Olá! 👋 Como posso ajudar?</p>
                   <p className="text-xs mt-2 text-gray-500">
                     Conte-me sobre seu evento e eu monto o pacote perfeito!
                   </p>
                 </div>
               )}
               {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                >
+                <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                   <div
                     className={`max-w-[85%] rounded-2xl px-4 py-2 ${
                       msg.role === "user"
@@ -169,15 +168,9 @@ export function ChatWidget() {
                     }`}
                   >
                     <div className="flex items-start gap-2">
-                      {msg.role === "assistant" && (
-                        <Bot className="h-4 w-4 mt-0.5 text-orange-400 flex-shrink-0" />
-                      )}
-                      {msg.role === "user" && (
-                        <User className="h-4 w-4 mt-0.5 text-white/80 flex-shrink-0" />
-                      )}
-                      <p className="text-sm whitespace-pre-wrap">
-                        {msg.content}
-                      </p>
+                      {msg.role === "assistant" && <Bot className="h-4 w-4 mt-0.5 text-orange-400 flex-shrink-0" />}
+                      {msg.role === "user" && <User className="h-4 w-4 mt-0.5 text-white/80 flex-shrink-0" />}
+                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                     </div>
                   </div>
                 </div>
